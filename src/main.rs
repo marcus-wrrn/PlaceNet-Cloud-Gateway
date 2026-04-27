@@ -14,9 +14,9 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let port: u16 = std::env::var("GATEWAY_PORT")
-        .unwrap_or_else(|_| "9000".to_string())
+        .unwrap_or_else(|_| "8080".to_string())
         .parse()
-        .unwrap_or(9000);
+        .unwrap_or(8080);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = TcpListener::bind(addr).await.expect("Failed to bind TCP listener");
