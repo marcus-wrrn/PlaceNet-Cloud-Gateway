@@ -26,6 +26,7 @@ PlaceNet as a whole is currently in early Alpha. PlaceNet nodes are able to send
 
 [PlaceNet Beacon](https://github.com/marcus-wrrn/PlaceNet-Beacon)
 - Device responsible for broadcasting PlaceNet messages via LoRa
+
 [PlaceNet Hamlet](https://github.com/marcus-wrrn/PlaceNet-Hamlet)
 - Main service for serving PlaceNet web content
 
