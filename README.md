@@ -9,23 +9,25 @@ The goal of PlaceNet is to give in-person communities better means for communica
 
 PlaceNet is a networking infrastructure built on top of a Proof of Presence (PoP) protocol for creating secure Peer to Peer (P2P) connections with other services within a physical area. This is achieved by broadcasting rotating encryption keys over Long Range Radio (LoRa) for both discovery and authentication. Upon verifying that another node is within broadcast distance (~600m - ~2km) using PoP, the nodes will establish a P2P connection via WireGuard with the help of a Coordination server accessible over the open internet. Once connected, PlaceNet nodes are able to share content between themselves as if they were on the same network.
 
-Coordination servers operate on zero trust principles. They do not have the ability to see any content running through them. Additionally Coordination servers operate on a federated architecture inspired by the Fediverse/ActivityPub protocol - meaning that PlaceNet does not rely on a centralized coordination service and instead can use many other providers. 
-
 ## What is The Cloud Gateway?
 
+The Cloud Gateway serves as a STUN server and is the main coordination service for establishing connections between content servers. Since most content servers (Hamlets) are not accessible over the open internet a process called NAT traversal must be completed to establish a P2P connection. The gateway will also serve as a way to establish unique identifiers for Hamlets, to minimize the risk of malicious nodes and remove the need for complicated naming conventions.
 
+For an in depth explanation of NAT traversal, Tailscale has a great article on the subject: https://tailscale.com/blog/how-nat-traversal-works
 
+Coordination servers operate on zero trust principles. They do not have the ability to see any content running through them. Additionally Coordination servers will operate on a federated architecture inspired by the Fediverse/ActivityPub protocol - meaning that PlaceNet does not rely on a centralized coordination service and instead can use many other providers. 
 
 ## Current state of the project
 
-The cloud gateway is in a highly developmental state. Consider all code in this repository subject to change. 
+The cloud gateway is in a highly developmental state. Consider all code in this repository subject to change. The gateway is currently used entirely to test the beacon and Hamlet projects.
 
 PlaceNet as a whole is currently in early Alpha. PlaceNet nodes are able to send messages to each other over the internet but are unable to serve content or route through other services. NAT traversal is currently in the works. If you would like to support this project please consider making a contribution to the following projects:
 
+
 [PlaceNet Beacon](https://github.com/marcus-wrrn/PlaceNet-Beacon)
-    - Device responsible for broadcasting PlaceNet messages via LoRa
+- Device responsible for broadcasting PlaceNet messages via LoRa
 [PlaceNet Hamlet](https://github.com/marcus-wrrn/PlaceNet-Hamlet)
-    - Main service for serving PlaceNet web content
+- Main service for serving PlaceNet web content
 
 ## AI Usage
 
