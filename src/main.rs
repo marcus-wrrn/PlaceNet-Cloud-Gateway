@@ -18,6 +18,7 @@ async fn main() {
         .parse()
         .unwrap_or(8080);
 
+    // TODO: In the future this should not be done via WebSockets but via a PubSub protocol. WS do not scale well only for testing
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = TcpListener::bind(addr).await.expect("Failed to bind TCP listener");
     let registry = ServerRegistry::new();
