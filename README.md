@@ -39,5 +39,5 @@ Vibe coding is greatly discouraged when making contributions.
 
 PlaceNet is greatly inspired by both Meshtastic and Tailscale. While PlaceNet differs in many key ways, understanding both projects can help one understand how PlaceNet aims to be implemented.
 
-[Meshatastic](https://meshtastic.org/)
-[Tailscale](https://tailscale.com/)
+[Meshatastic](https://meshtastic.org/docs/introduction/)
+[Tailscale](https://tailscale.com/blog/how-tailscale-works)
