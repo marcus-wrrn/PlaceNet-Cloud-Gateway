@@ -1,1 +1,7 @@
 /target
+# Runtime / deployment artifacts — never commit secrets or local state.
+/certs
+*.db
+*.db-shm
+*.db-wal
+.env

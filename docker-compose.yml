@@ -1,0 +1,58 @@
+# PlaceNet cloud gateway stack: Mosquitto (dynsec) + gateway API.
+#
+# Secrets come from the environment / a .env file next to this compose file:
+#   DYNSEC_ADMIN_PASSWORD=...   (broker admin; shared by broker + gateway)
+#
+# Ports published to the host:
+#   8883  MQTTS  — Hamlets connect here
+#   8443  HTTPS  — Hamlets POST /api/login here
+# The plain 1883 listener is intentionally NOT published; only the gateway
+# container reaches it over the internal network.
+
+services:
+  broker:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    entrypoint: ["/docker-entrypoint-custom.sh"]
+    environment:
+      DYNSEC_ADMIN_USER: ${DYNSEC_ADMIN_USER:-gateway-admin}
+      DYNSEC_ADMIN_PASSWORD: ${DYNSEC_ADMIN_PASSWORD:?set DYNSEC_ADMIN_PASSWORD}
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./docker/mosquitto/entrypoint.sh:/docker-entrypoint-custom.sh:ro
+      - ./certs/broker:/mosquitto/certs:ro      # server.crt + server.key (Let's Encrypt / your CA)
+      - broker-data:/mosquitto/data             # dynsec state — MUST persist
+    ports:
+      - "8883:8883"
+    networks: [placenet]
+
+  gateway:
+    build: .
+    restart: unless-stopped
+    depends_on: [broker]
+    environment:
+      GATEWAY_API_HOST: 0.0.0.0
+      GATEWAY_API_PORT: 8443
+      GATEWAY_TLS_ENABLED: ${GATEWAY_TLS_ENABLED:-true}
+      GATEWAY_TLS_CERT: /certs/gateway.crt
+      GATEWAY_TLS_KEY: /certs/gateway.key
+      GATEWAY_DATABASE_URL: sqlite:///data/placenet_gateway.db
+      GATEWAY_MQTT_HOST: broker
+      GATEWAY_MQTT_PORT: 1883
+      DYNSEC_ADMIN_USER: ${DYNSEC_ADMIN_USER:-gateway-admin}
+      DYNSEC_ADMIN_PASSWORD: ${DYNSEC_ADMIN_PASSWORD:?set DYNSEC_ADMIN_PASSWORD}
+      GATEWAY_BROKER_PUBLIC_HOST: ${GATEWAY_BROKER_PUBLIC_HOST:?public hostname Hamlets use for MQTTS}
+      GATEWAY_BROKER_PUBLIC_PORT: 8883
+    volumes:
+      - ./certs/gateway:/certs:ro               # gateway.crt + gateway.key for the HTTPS API
+      - gateway-data:/data                      # SQLite credential/device store
+    ports:
+      - "8443:8443"
+    networks: [placenet]
+
+volumes:
+  broker-data:
+  gateway-data:
+
+networks:
+  placenet:
