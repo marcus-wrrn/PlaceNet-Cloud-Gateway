@@ -1,10 +1,3 @@
-# What if a Town Square was just a Town Square?
-
-This project is part of the greater PlaceNet project. 
-
-The goal of PlaceNet is to give in-person communities better means for communicating with each other while encouraging healthy user engagement. We hope that PlaceNet websites will be able to serve as digital third spaces that foster connections between people in the same area without the need for a large governing body or algorithmic control. Unlike other solutions to this problem, PlaceNet is not an App or Content Platform, it is instead infrastructure for other apps and platforms to build on top of. PlaceNet is less like NextDoor and more like the World Wide Web.
-
-
 ## What is PlaceNet?
 
 PlaceNet is a networking infrastructure built on top of a Proof of Presence (PoP) protocol for creating secure Peer to Peer (P2P) connections with other services within a physical area. This is achieved by broadcasting rotating encryption keys over Long Range Radio (LoRa) for both discovery and authentication. Upon verifying that another node is within broadcast distance (~600m - ~2km) using PoP, the nodes will establish a P2P connection via WireGuard with the help of a Coordination server accessible over the open internet. Once connected, PlaceNet nodes are able to share content between themselves as if they were on the same network.
