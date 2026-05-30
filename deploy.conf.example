@@ -1,0 +1,5 @@
+# Copy to deploy.conf (gitignored) and adjust for your server.
+REMOTE="user@example.com"           # SSH destination
+REMOTE_USER="user"                  # remote Linux user (owns files, runs the gateway service)
+REMOTE_DIR="/opt/placenet"          # install root on the server
+TARGET="x86_64-unknown-linux-gnu"   # Rust target triple to build (rustup target add ...)

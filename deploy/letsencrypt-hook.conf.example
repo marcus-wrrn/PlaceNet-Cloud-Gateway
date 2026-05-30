@@ -1,0 +1,24 @@
+# PlaceNet Let's Encrypt deploy-hook configuration.
+# Copy to /etc/placenet/letsencrypt-hook.conf on the server and edit.
+# Sourced by letsencrypt-hook.sh; every value is optional (defaults shown).
+
+# Cert hostnames issued via certbot. Set both to the SAME value when one cert
+# serves both the API and the broker; leave a value empty to skip that service.
+GATEWAY_DOMAIN="gateway.example.com"
+BROKER_DOMAIN="broker.example.com"
+
+# Install root — must match REMOTE_DIR in deploy.conf.
+INSTALL_DIR="/opt/placenet"
+
+# Linux user/group that runs the gateway — must match REMOTE_USER in deploy.conf.
+# The gateway process reads gateway.key, so the key is chowned to this user.
+GATEWAY_USER="user"
+GATEWAY_GROUP="user"
+
+# uid/gid mosquitto runs as inside the eclipse-mosquitto container.
+BROKER_UID="1883"
+BROKER_GID="1883"
+
+# systemd unit names (defaults shown).
+GATEWAY_SERVICE="placenet-gateway"
+BROKER_SERVICE="placenet-broker"

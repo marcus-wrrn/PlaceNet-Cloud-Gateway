@@ -1,0 +1,26 @@
+# PlaceNet cloud gateway (native binary, orchestrated by systemd).
+#
+# Install: /etc/systemd/system/placenet-gateway.service  (deploy.sh does this)
+# Manage:  sudo systemctl {enable --now,restart,stop,status} placenet-gateway
+#
+# The binary is built off-server and shipped by deploy.sh to /opt/placenet/bin.
+# It talks to the broker's dynsec admin channel on 127.0.0.1:1883, so the broker
+# unit must be up first.
+
+[Unit]
+Description=PlaceNet Cloud Gateway
+After=network-online.target placenet-broker.service
+Wants=network-online.target
+Requires=placenet-broker.service
+
+[Service]
+Type=simple
+User=${REMOTE_USER}
+WorkingDirectory=/opt/placenet
+EnvironmentFile=/opt/placenet/.env
+ExecStart=/opt/placenet/bin/placenet-cloud-gateway serve
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

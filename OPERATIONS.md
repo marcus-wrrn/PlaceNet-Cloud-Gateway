@@ -13,6 +13,11 @@ Mosquitto broker (Dynamic Security plugin) so they can communicate over MQTTS.
 - **Mosquitto + dynsec** — runs in Docker; per-device clients/ACLs are created on
   demand by the gateway at login time.
 
+The gateway runs as a **native binary on the host**; only the broker runs in
+Docker. Both are orchestrated by **systemd** (`placenet-gateway.service`,
+`placenet-broker.service`). The binary is built off-server and shipped by
+`deploy.sh` — nothing is compiled on the server.
+
 ## Registration flow
 
 1. Hamlet `POST`s `{username, password}` to `https://<gateway>:8443/api/login`.
@@ -28,20 +33,96 @@ Topics (per device): `placenet/<device_id>/{cmds,connect,notify}`.
 
 ## Deploy
 
+`deploy.sh` builds the binary locally, ships it together with the broker's
+Docker setup and the systemd units to `${REMOTE_DIR}` (default `/opt/placenet`),
+and (re)starts both services. Configure it via `deploy.conf` (see
+`deploy.conf.example`).
+
+### Server layout (`/opt/placenet`)
+
+```
+/opt/placenet/
+├── bin/placenet-cloud-gateway        # shipped by deploy.sh
+├── docker-compose.yml                # shipped — broker only
+├── docker/mosquitto/{mosquitto.conf,entrypoint.sh}   # shipped
+├── certs/broker/{server.crt,server.key}    # managed by the certbot deploy hook (MQTTS :8883)
+├── certs/gateway/{gateway.crt,gateway.key} # managed by the certbot deploy hook (HTTPS API :8443)
+├── data/                             # SQLite store, created at runtime
+└── .env                              # placed by hand (secrets + config)
+```
+
+### First-time setup (once, on the server)
+
 ```sh
-# 1. Provide TLS certs (Let's Encrypt or your CA):
-#    certs/broker/server.crt   certs/broker/server.key      (MQTTS, port 8883)
-#    certs/gateway/gateway.crt certs/gateway/gateway.key    (HTTPS API, port 8443)
+# 1. Environment file (copy .env.example, then fill in the secrets):
+sudo cp .env.example /opt/placenet/.env
+sudo sed -i "s/^DYNSEC_ADMIN_PASSWORD=.*/DYNSEC_ADMIN_PASSWORD=$(openssl rand -hex 24)/" /opt/placenet/.env
+# edit GATEWAY_BROKER_PUBLIC_HOST=<your broker hostname>, and confirm
+# GATEWAY_TLS_ENABLED=true so the API is served over TLS.
 
-# 2. Set the broker admin secret (shared by broker + gateway):
-echo "DYNSEC_ADMIN_PASSWORD=$(openssl rand -hex 24)"      >  .env
-echo "GATEWAY_BROKER_PUBLIC_HOST=gateway.example.com"     >> .env
+# 2. TLS certs — see "TLS certificates (Let's Encrypt)" below.
+```
 
-# 3. Bring up the stack:
-docker compose up -d --build
+### TLS certificates (Let's Encrypt)
 
-# 4. Seed a Hamlet credential (runs inside the gateway container):
-docker compose exec gateway placenet-cloud-gateway seed-user hamlet-1
+Both the HTTPS API (`:8443`) and the broker MQTTS listener (`:8883`) use
+publicly-trusted certs so Hamlets verify against system roots and **pin no CA**
+(they leave `PLACENET_GATEWAY_MQTT_CAFILE` unset). One cert can serve both if
+they share a hostname; otherwise issue one per host.
+
+`deploy/letsencrypt-hook.sh` is a certbot **deploy hook**: on each renewal it
+copies the renewed cert/key into `certs/gateway` and/or `certs/broker` (matching
+by domain), fixes ownership (gateway key → the gateway user; broker key →
+mosquitto's uid/gid), and restarts the affected service. It is configured
+entirely from `/etc/placenet/letsencrypt-hook.conf` — nothing host-specific is
+baked in.
+
+```sh
+# Prereqs: public DNS A/AAAA record(s) -> server, port 80 reachable, certbot installed.
+
+# Install the hook and its config:
+sudo install -m755 deploy/letsencrypt-hook.sh /etc/letsencrypt/renewal-hooks/deploy/placenet.sh
+sudo install -d /etc/placenet
+sudo cp deploy/letsencrypt-hook.conf.example /etc/placenet/letsencrypt-hook.conf
+# edit GATEWAY_DOMAIN / BROKER_DOMAIN, and set GATEWAY_USER to REMOTE_USER from deploy.conf.
+
+# Issue the cert(s) — one host serving both:
+sudo certbot certonly --standalone -d example.com
+#   (separate hosts: certbot certonly --standalone -d gateway.example.com
+#                    certbot certonly --standalone -d broker.example.com)
+
+# Populate the cert dirs now (certbot only fires deploy hooks on renewal):
+sudo RENEWED_DOMAINS=example.com RENEWED_LINEAGE=/etc/letsencrypt/live/example.com \
+  /etc/letsencrypt/renewal-hooks/deploy/placenet.sh
+
+# Renewals are automatic via certbot.timer; confirm and dry-run the hook:
+sudo systemctl enable --now certbot.timer
+sudo certbot renew --dry-run
+```
+
+### Each deploy (from your workstation)
+
+```sh
+cp deploy.conf.example deploy.conf   # first time only; edit REMOTE/REMOTE_DIR/TARGET
+rustup target add x86_64-unknown-linux-gnu   # first time only
+./deploy.sh                          # build → ship → systemctl restart both units
+```
+
+### Seed a Hamlet credential (on the server)
+
+```sh
+sudo systemctl stop placenet-gateway          # release the SQLite lock
+sudo -u marcus GATEWAY_DATABASE_URL=sqlite:///opt/placenet/data/placenet_gateway.db \
+  /opt/placenet/bin/placenet-cloud-gateway seed-user hamlet-1
+sudo systemctl start placenet-gateway
+```
+
+### Service control
+
+```sh
+sudo systemctl status  placenet-broker placenet-gateway
+sudo systemctl restart placenet-gateway      # after a manual config change
+journalctl -u placenet-gateway -f            # follow gateway logs
 ```
 
 ## Configuration (environment variables)
@@ -60,6 +141,14 @@ docker compose exec gateway placenet-cloud-gateway seed-user hamlet-1
 | `GATEWAY_PORT` | `8080` | Legacy WebSocket relay port |
 
 ## Notes
-- dynsec state (`dynamic-security.json`) lives on the `broker-data` volume. If that
-  volume is wiped, all devices must re-login (which re-provisions them automatically).
+- **Broker listeners:** `8883` (MQTTS) is published publicly — this is the
+  broker's reason for existing; Hamlets connect here. `1883` (plaintext) is the
+  gateway's dynsec admin channel and is published on `127.0.0.1` **only**, since
+  the gateway now runs on the same host. Never expose `1883` to the internet — it
+  is unencrypted broker administration.
+- dynsec state (`dynamic-security.json`) lives on the `broker-data` Docker volume.
+  If that volume is wiped, all devices must re-login (which re-provisions them
+  automatically). `deploy.sh` never touches it.
 - Default ACL access is **deny**; a device can only touch its own three topics.
+- The `.env` file and `certs/` are placed by hand and are **not** shipped by
+  `deploy.sh` (they hold secrets). Re-deploys leave them untouched.
