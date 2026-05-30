@@ -60,9 +60,6 @@ docker compose exec gateway placenet-cloud-gateway seed-user hamlet-1
 | `GATEWAY_PORT` | `8080` | Legacy WebSocket relay port |
 
 ## Notes
-
-- The plain `1883` broker listener is **internal only** — never publish it to the
-  host. The gateway reaches it over the Docker network for dynsec control.
 - dynsec state (`dynamic-security.json`) lives on the `broker-data` volume. If that
   volume is wiped, all devices must re-login (which re-provisions them automatically).
 - Default ACL access is **deny**; a device can only touch its own three topics.

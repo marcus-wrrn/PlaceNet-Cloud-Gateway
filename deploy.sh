@@ -2,9 +2,7 @@
 
 set -e
 
-BINARY="target/x86_64-unknown-linux-gnu/release/placenet-cloud-gateway"
-REMOTE="marcus@digitaloutpost.ca"
-REMOTE_DIR="~/"
+source "$(dirname "$0")/deploy.conf"
 
 if [ ! -f "$BINARY" ]; then
     echo "Error: binary not found at $BINARY"
