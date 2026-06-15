@@ -19,7 +19,7 @@ use tracing::{error, info, warn};
 
 use crate::config::GatewayConfig;
 use crate::db::Store;
-use crate::dynsec::DynsecHandle;
+use crate::services::dynsec::DynsecHandle;
 use crate::protocol::{BrokerInfo, DeviceTopics, LoginRequest, LoginResponse, PROTOCOL_VERSION};
 
 #[derive(Clone)]

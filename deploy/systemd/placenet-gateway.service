@@ -4,14 +4,14 @@
 # Manage:  sudo systemctl {enable --now,restart,stop,status} placenet-gateway
 #
 # The binary is built off-server and shipped by deploy.sh to /opt/placenet/bin.
-# It talks to the broker's dynsec admin channel on 127.0.0.1:1883, so the broker
-# unit must be up first.
+# It writes mosquitto.conf, bootstraps the dynsec state, and spawns + supervises
+# the Mosquitto broker as a child process — so this single unit owns the whole
+# stack. Mosquitto must be installed on the host (mosquitto + mosquitto-clients).
 
 [Unit]
 Description=PlaceNet Cloud Gateway
-After=network-online.target placenet-broker.service
+After=network-online.target
 Wants=network-online.target
-Requires=placenet-broker.service
 
 [Service]
 Type=simple

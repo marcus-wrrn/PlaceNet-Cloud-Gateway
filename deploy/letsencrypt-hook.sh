@@ -3,9 +3,10 @@
 #
 # certbot runs this once per renewed lineage, with $RENEWED_DOMAINS and
 # $RENEWED_LINEAGE set. It copies the renewed cert/key into the gateway and/or
-# broker cert directories (matching by domain) and restarts the affected
-# service. Public certs mean Hamlets verify against system roots and need no CA
-# pinning.
+# broker cert directories (matching by domain) and restarts the gateway. The
+# gateway spawns the broker, so both cert/key pairs are owned by the gateway
+# user and a single restart reloads them. Public certs mean Hamlets verify
+# against system roots and need no CA pinning.
 #
 # Nothing here is host-specific: all settings come from a config file (default
 # /etc/placenet/letsencrypt-hook.conf) or the environment. See
@@ -31,12 +32,9 @@ CONF_FILE="${PLACENET_HOOK_CONF:-/etc/placenet/letsencrypt-hook.conf}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/placenet}"
 GATEWAY_DOMAIN="${GATEWAY_DOMAIN:-}"          # cert host for the HTTPS API (:8443)
 BROKER_DOMAIN="${BROKER_DOMAIN:-}"            # cert host for MQTTS (:8883); may equal GATEWAY_DOMAIN
-GATEWAY_USER="${GATEWAY_USER:-root}"          # Linux user running the gateway (reads gateway.key)
+GATEWAY_USER="${GATEWAY_USER:-root}"          # Linux user running the gateway (reads gateway.key + broker key)
 GATEWAY_GROUP="${GATEWAY_GROUP:-$GATEWAY_USER}"
-BROKER_UID="${BROKER_UID:-1883}"              # uid/gid mosquitto runs as in the container
-BROKER_GID="${BROKER_GID:-1883}"
 GATEWAY_SERVICE="${GATEWAY_SERVICE:-placenet-gateway}"
-BROKER_SERVICE="${BROKER_SERVICE:-placenet-broker}"
 
 # certbot sets these; required for a manual run too.
 : "${RENEWED_DOMAINS:?certbot sets this; for a manual run, export RENEWED_DOMAINS}"
@@ -60,7 +58,7 @@ if [ -n "$GATEWAY_DOMAIN" ] && domain_matches "$GATEWAY_DOMAIN"; then
 fi
 
 if [ -n "$BROKER_DOMAIN" ] && domain_matches "$BROKER_DOMAIN"; then
-  install_pair "$INSTALL_DIR/certs/broker" server.crt server.key "$BROKER_UID" "$BROKER_GID"
-  systemctl restart "$BROKER_SERVICE" 2>/dev/null || true
+  install_pair "$INSTALL_DIR/certs/broker" server.crt server.key "$GATEWAY_USER" "$GATEWAY_GROUP"
+  systemctl restart "$GATEWAY_SERVICE" 2>/dev/null || true
   echo "[placenet-hook] installed broker cert for $BROKER_DOMAIN -> $INSTALL_DIR/certs/broker"
 fi

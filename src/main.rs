@@ -1,13 +1,8 @@
 mod api;
 mod config;
 mod db;
-mod dynsec;
 mod protocol;
-
-// ── Legacy WebSocket relay (kept until the MQTT router replaces it) ──
-mod messages;
-mod registry;
-mod ws_handler;
+mod services;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -20,7 +15,7 @@ use tracing::{error, info, warn};
 use api::ApiState;
 use config::GatewayConfig;
 use db::Store;
-use registry::ServerRegistry;
+use services::ws_relay::ServerRegistry;
 
 #[derive(Parser)]
 #[command(name = "placenet-cloud-gateway", about = "PlaceNet cloud gateway")]
@@ -101,8 +96,14 @@ async fn serve(config: GatewayConfig) {
         }
     };
 
+    // ── Embedded Mosquitto broker (spawned + supervised by this process) ──
+    if let Err(e) = services::mqtt_brokerage::start_supervised(config.as_ref()).await {
+        error!("failed to start mosquitto broker: {e}");
+        std::process::exit(1);
+    }
+
     // ── dynsec admin client ──
-    let (dynsec_handle, ready_rx) = dynsec::spawn(
+    let (dynsec_handle, ready_rx) = services::dynsec::spawn(
         config.mqtt_host.clone(),
         config.mqtt_port,
         config.dynsec_admin_user.clone(),
@@ -187,7 +188,7 @@ async fn run_ws_relay(port: u16) {
                 info!(peer = %peer_addr, "Incoming WS connection");
                 let registry = registry.clone();
                 tokio::spawn(async move {
-                    ws_handler::handle(stream, registry).await;
+                    services::ws_relay::handle(stream, registry).await;
                 });
             }
             Err(e) => warn!(error = %e, "WS accept error"),

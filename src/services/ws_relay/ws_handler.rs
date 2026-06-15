@@ -6,8 +6,8 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 use tracing::{error, info, warn};
 
-use crate::messages::GatewayMessage;
-use crate::registry::{ServerRegistry, WsSink};
+use super::messages::GatewayMessage;
+use super::registry::{ServerRegistry, WsSink};
 
 /// Drive a single WebSocket connection to completion.
 ///

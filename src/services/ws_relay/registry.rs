@@ -7,7 +7,7 @@ use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use tokio::sync::Mutex;
 use tracing::{info, warn};
 
-use crate::messages::GatewayMessage;
+use super::messages::GatewayMessage;
 
 /// A thread-safe sender half of a WebSocket connection.
 pub type WsSink = Arc<Mutex<futures_util::stream::SplitSink<WebSocketStream<TcpStream>, Message>>>;

@@ -11,14 +11,11 @@ BROKER_DOMAIN="broker.example.com"
 INSTALL_DIR="/opt/placenet"
 
 # Linux user/group that runs the gateway — must match REMOTE_USER in deploy.conf.
-# The gateway process reads gateway.key, so the key is chowned to this user.
+# The gateway process reads gateway.key AND the broker key (it spawns mosquitto),
+# so both keys are chowned to this user.
 GATEWAY_USER="user"
 GATEWAY_GROUP="user"
 
-# uid/gid mosquitto runs as inside the eclipse-mosquitto container.
-BROKER_UID="1883"
-BROKER_GID="1883"
-
-# systemd unit names (defaults shown).
+# systemd unit name (default shown). The gateway owns the broker, so renewing
+# either cert restarts this one unit.
 GATEWAY_SERVICE="placenet-gateway"
-BROKER_SERVICE="placenet-broker"
