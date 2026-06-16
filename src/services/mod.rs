@@ -8,4 +8,3 @@
 
 pub mod dynsec;
 pub mod mqtt_brokerage;
-pub mod ws_relay;
