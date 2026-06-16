@@ -47,12 +47,12 @@ async fn healthz(State(state): State<ApiState>) -> Response {
 }
 
 async fn login(State(state): State<ApiState>, Json(req): Json<LoginRequest>) -> Response {
+    info!("Login Request received!");
     if !state.ready.load(Ordering::Relaxed) {
         warn!("login attempted before dynsec admin ready");
         return error_response(StatusCode::SERVICE_UNAVAILABLE, "broker not ready, retry");
     }
 
-    // 1. Authenticate.
     match state.store.verify_credential(&req.username, &req.password).await {
         Ok(true) => {}
         Ok(false) => {
@@ -65,7 +65,6 @@ async fn login(State(state): State<ApiState>, Json(req): Json<LoginRequest>) -> 
         }
     }
 
-    // 2. Assign or look up the device.
     let device = match state.store.get_or_create_device(&req.username).await {
         Ok(d) => d,
         Err(e) => {

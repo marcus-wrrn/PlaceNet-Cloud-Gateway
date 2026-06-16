@@ -9,13 +9,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use clap::{Parser, Subcommand};
-use tokio::net::TcpListener;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use api::ApiState;
 use config::GatewayConfig;
 use db::Store;
-use services::ws_relay::ServerRegistry;
 
 #[derive(Parser)]
 #[command(name = "placenet-cloud-gateway", about = "PlaceNet cloud gateway")]
@@ -26,7 +24,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Run the gateway (login API, dynsec admin, legacy WS relay). Default.
+    /// Run the gateway (login API, dynsec admin). Default.
     Serve,
     /// Seed or update a Hamlet login credential in the store.
     SeedUser {
@@ -120,9 +118,6 @@ async fn serve(config: GatewayConfig) {
         });
     }
 
-    // ── Legacy WS relay (separate task/port) ──
-    tokio::spawn(run_ws_relay(config.ws_port));
-
     // ── Login API ──
     let state = ApiState {
         store,
@@ -136,62 +131,12 @@ async fn serve(config: GatewayConfig) {
         config.api_port,
     );
 
-    if config.tls_enabled {
-        info!("login API listening on https://{addr}");
-        let tls = match axum_server::tls_rustls::RustlsConfig::from_pem_file(
-            &config.tls_cert,
-            &config.tls_key,
-        )
+    // TLS is terminated by nginx; serve plain HTTP behind the reverse proxy.
+    info!("login API listening on http://{addr}");
+    if let Err(e) = axum_server::bind(addr)
+        .serve(app.into_make_service())
         .await
-        {
-            Ok(t) => t,
-            Err(e) => {
-                error!("failed to load TLS cert/key: {e}");
-                std::process::exit(1);
-            }
-        };
-        if let Err(e) = axum_server::bind_rustls(addr, tls)
-            .serve(app.into_make_service())
-            .await
-        {
-            error!("login API server error: {e}");
-        }
-    } else {
-        warn!("GATEWAY_TLS_ENABLED=false — serving login API over plain HTTP (dev only)");
-        info!("login API listening on http://{addr}");
-        if let Err(e) = axum_server::bind(addr)
-            .serve(app.into_make_service())
-            .await
-        {
-            error!("login API server error: {e}");
-        }
-    }
-}
-
-/// Legacy WebSocket relay listener (unchanged behaviour, kept for the deferred
-/// peer-coordination path until the MQTT router replaces it).
-async fn run_ws_relay(port: u16) {
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    let listener = match TcpListener::bind(addr).await {
-        Ok(l) => l,
-        Err(e) => {
-            error!("failed to bind legacy WS listener on {addr}: {e}");
-            return;
-        }
-    };
-    let registry = ServerRegistry::new();
-    info!("legacy WS relay listening on ws://{addr}");
-
-    loop {
-        match listener.accept().await {
-            Ok((stream, peer_addr)) => {
-                info!(peer = %peer_addr, "Incoming WS connection");
-                let registry = registry.clone();
-                tokio::spawn(async move {
-                    services::ws_relay::handle(stream, registry).await;
-                });
-            }
-            Err(e) => warn!(error = %e, "WS accept error"),
-        }
+    {
+        error!("login API server error: {e}");
     }
 }
