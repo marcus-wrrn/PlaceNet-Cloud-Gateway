@@ -27,8 +27,6 @@ PlaceNet as a whole is currently in early Alpha. PlaceNet nodes are able to send
 
 AI is used throughout this project to allow for faster development time and as a means of learning. However all code is consistently verified, refactored and planned out. Due to the nature of the project, it is not enough to have a working prototype, the networking logic must also be understood and documented. It is the full intent of the project that others will be able to write their own implementations for various parts of PlaceNet.   
 
-Vibe coding is greatly discouraged when making contributions.
-
 ## Similar Projects
 
 PlaceNet is greatly inspired by both Meshtastic and Tailscale. While PlaceNet differs in many key ways, understanding both projects can help one understand how PlaceNet aims to be implemented.
